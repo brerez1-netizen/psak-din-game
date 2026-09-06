@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#12100c">
+<title>פסק דין - תרגול עצמי</title>
+<style>
+  :root{
+    --bg:#12100c; --panel:#1d1a14; --panel2:#272219; --line:#3a3226;
+    --txt:#f2ece0; --dim:#a89b83; --accent:#c9a227; --accent2:#8c7853;
+    --ok:#3f9c5a; --bad:#c0453f; --plili:#c0453f; --mishmaati:#c9a227; --ezrachi:#3f7c9c;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{background:var(--bg);color:var(--txt);min-height:100vh;
+       font-family:"Segoe UI",Arial,sans-serif;display:flex;flex-direction:column}
+  .wrap{flex:1;display:flex;flex-direction:column;padding:14px;gap:13px;
+        max-width:660px;width:100%;margin:0 auto}
+
+  /* סרגל עליון */
+  .top{display:flex;align-items:center;gap:10px;padding:9px 14px;background:var(--panel);
+       border-bottom:1px solid var(--line);flex:none;position:sticky;top:0;z-index:5}
+  .top .where{font-size:14px;color:var(--dim)}
+  .top .phase{background:var(--panel2);border:1px solid var(--line);border-radius:14px;
+              padding:3px 11px;font-size:13px;color:var(--accent)}
+  .top .sp{flex:1}
+  .top .pts{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
+  .top .clock{font-size:19px;font-weight:700;min-width:34px;text-align:center;
+              font-variant-numeric:tabular-nums}
+  .top .clock.low{color:var(--bad)}
+  .prog{height:5px;background:var(--panel2);flex:none;position:sticky;top:43px;z-index:5}
+  .prog i{display:block;height:100%;background:var(--accent);transition:width .4s ease}
+
+  /* תיק */
+  .fileno{font-size:13px;color:var(--accent2);letter-spacing:.5px}
+  .ctitle{font-size:23px;font-weight:700;line-height:1.25}
+  .brief{background:var(--panel);border-inline-start:4px solid var(--accent2);border-radius:10px;
+         padding:14px 15px;font-size:16px;line-height:1.65;color:#ded5c4}
+  .fig{width:100%;aspect-ratio:16/10;border-radius:12px;overflow:hidden;background:var(--panel2);
+       max-height:30vh}
+  .fig img{width:100%;height:100%;object-fit:cover;display:block}
+  .qtext{font-size:19px;font-weight:700;line-height:1.4}
+  .sub{font-size:14px;color:var(--dim);line-height:1.55}
+
+  /* מסלולים */
+  .tracks{display:flex;flex-direction:column;gap:9px}
+  .trk{display:flex;gap:11px;align-items:flex-start;text-align:start;width:100%;
+       background:var(--panel);border:2px solid var(--line);border-radius:12px;
+       padding:12px 13px;font-family:inherit;color:var(--txt);cursor:pointer}
+  .trk .ic{flex:none;font-size:21px;line-height:1.1}
+  /* .tx הוא פריט flex ולכן נהיה בלוק מעצמו, אבל שלושת הבנים שלו נשארים inline
+     ואז הכותרת והרמז נדבקים בלי רווח. חייבים להצהיר עליהם במפורש. */
+  .trk .tx{flex:1;display:flex;flex-direction:column}
+  .trk .nm{display:block;font-size:17px;font-weight:700}
+  .trk .hn{display:block;font-size:13.5px;color:var(--dim);margin-top:3px;line-height:1.45}
+  .trk .bd{display:block;font-size:12.5px;color:var(--accent2);margin-top:5px;line-height:1.45}
+  .trk.on{border-color:var(--accent);background:rgba(201,162,39,.12)}
+  .trk.right{border-color:var(--ok);background:rgba(63,156,90,.16)}
+  .trk.miss{border-color:var(--ok);border-style:dashed}
+  .trk.wrong{border-color:var(--bad);background:rgba(192,69,63,.16)}
+  .trk.mute{opacity:.35}
+
+  /* קלפי ראיה */
+  .cards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .card{background:var(--panel);border:2px solid var(--line);border-radius:12px;padding:13px 12px;
+        min-height:104px;display:flex;flex-direction:column;gap:6px;text-align:start;
+        font-family:inherit;color:var(--txt);cursor:pointer}
+  .card .ic{font-size:24px}
+  .card .lb{font-size:14.5px;font-weight:700;line-height:1.35}
+  .card .tx{font-size:13.5px;line-height:1.5;color:#ccc2af}
+  .card.open{cursor:default}
+  .card.open.rel{border-color:var(--ok);background:rgba(63,156,90,.13)}
+  .card.open.irr{border-color:var(--bad);background:rgba(192,69,63,.11)}
+  .card .tag{font-size:12px;font-weight:700;align-self:flex-start;border-radius:20px;padding:2px 9px}
+  .card.rel .tag{background:var(--ok);color:#04160a}
+  .card.irr .tag{background:var(--bad);color:#1c0403}
+  .card.spent{opacity:.4;cursor:default}
+
+  /* תשובות */
+  .answers{display:flex;flex-direction:column;gap:9px}
+  .ans{display:flex;gap:11px;align-items:flex-start;text-align:start;width:100%;
+       background:var(--panel);border:2px solid var(--line);border-radius:12px;
+       padding:13px 14px;font-size:15.5px;line-height:1.45;font-weight:600;color:var(--txt);
+       font-family:inherit;cursor:pointer}
+  .ans .n{flex:none;width:27px;height:27px;border-radius:7px;background:var(--panel2);
+          display:flex;align-items:center;justify-content:center;font-size:14px}
+  .ans.right{border-color:var(--ok);background:rgba(63,156,90,.16)}
+  .ans.right .n{background:var(--ok);color:#04160a}
+  .ans.wrong{border-color:var(--bad);background:rgba(192,69,63,.16)}
+  .ans.wrong .n{background:var(--bad);color:#1c0403}
+  .ans.mute{opacity:.38}
+
+  .verdict{display:flex;align-items:center;gap:10px;font-size:18px;font-weight:700}
+  .verdict .d{font-size:16px;font-variant-numeric:tabular-nums;color:var(--dim)}
+  .explain{background:var(--panel);border-inline-start:4px solid var(--accent);border-radius:10px;
+           padding:13px 14px;font-size:15.5px;line-height:1.68;color:#e4dbc9}
+  .explain b{color:var(--accent)}
+
+  button.go{font-family:inherit;font-size:17px;font-weight:700;padding:15px;border:none;
+            border-radius:12px;background:var(--accent);color:#1c1503;width:100%;cursor:pointer}
+  button.go:disabled{opacity:.35;cursor:default}
+  button.ghost{background:var(--panel2);color:var(--txt);border:1px solid var(--line)}
+
+  .hero{flex:1;display:flex;flex-direction:column;justify-content:center;gap:15px;text-align:center}
+  .hero h1{font-size:33px;color:var(--accent);letter-spacing:1px}
+  .hero p{font-size:15.5px;line-height:1.65;color:var(--dim)}
+  .rules{background:var(--panel);border-radius:12px;padding:14px 16px;text-align:start;
+         font-size:14.5px;line-height:1.8;color:#ccc2af}
+  .rules b{color:var(--txt)}
+  .big{font-size:44px;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
+  .rows{display:flex;flex-direction:column;gap:8px}
+  .row{display:flex;align-items:center;gap:10px;background:var(--panel);border-radius:10px;
+       padding:11px 13px;font-size:15px}
+  .row .lbl{flex:1;text-align:start}
+  .row .v{font-weight:700;font-variant-numeric:tabular-nums}
+  .row.bad .v{color:var(--bad)} .row.good .v{color:var(--ok)}
+  .note{font-size:13.5px;color:var(--dim);line-height:1.6}
+  .hidden{display:none!important}
+  @media(max-width:400px){.cards{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="top hidden" id="top">
+  <span class="where" id="where"></span>
+  <span class="phase" id="phase"></span>
+  <span class="sp"></span>
+  <span class="clock hidden" id="clock"></span>
+  <span class="pts" id="pts">0</span>
+</div>
+<div class="prog hidden" id="progWrap"><i id="prog" style="width:0"></i></div>
+
+<div class="wrap" id="wrap"></div>
+
+<script src="js/gameData.js"></script>
+<script src="js/engine.js"></script>
+<script>
+(function(){
+  "use strict";
+  const G = window.gameData, E = window.psakDin;
+  const M = G.meta;
+  const KEY = "psak-din:solo:v1";   // slug ייחודי, כדי שמשחקים אחרים באותו דפדפן לא ידרסו
+
+  const wrap = document.getElementById("wrap");
+  const elTop = document.getElementById("top"), elWhere = document.getElementById("where");
+  const elPhase = document.getElementById("phase"), elPts = document.getElementById("pts");
+  const elClock = document.getElementById("clock");
+  const elProgWrap = document.getElementById("progWrap"), elProg = document.getElementById("prog");
+
+  // ----------------------------------------------------------------
+  // מצב. נשמר ב-localStorage אחרי כל צעד כדי לשרוד רענון של הדף.
+  // ----------------------------------------------------------------
+  let S = null;
+  function fresh(){
+    return {
+      i: 0,                 // אינדקס התיק
+      phase: "brief",       // brief | track | evidence | ruling | sanction | wrap | done
+      score: 0,
+      picked: [],           // מסלולים שנבחרו בתיק הנוכחי
+      opened: [],           // מזהי קלפי ראיה שנפתחו בתיק הנוכחי
+      seed: Date.now() % 2147483647,
+      log: [],              // { no, trackOk, relOpened, rulingOk, sanctionOk, pts }
+      cur: { pts: 0, trackOk: null, relOpened: 0, rulingOk: null, sanctionOk: null },
+    };
+  }
+  function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
+  function load(){
+    try{ const raw = localStorage.getItem(KEY); if(!raw) return null;
+         const o = JSON.parse(raw); return (o && typeof o.i === "number") ? o : null;
+    }catch(e){ return null; }
+  }
+  function clear(){ try{ localStorage.removeItem(KEY); }catch(e){} }
+
+  // ערבוב יציב לכל תיק: אותו זרע נותן אותו סדר גם אחרי רענון,
+  // כך שסטודנט שרענן באמצע לא מקבל פתאום סדר אחר.
+  function rndFor(kind, caseId){
+    return E.seededRandom(E.seedOf(kind + ":" + caseId + ":" + S.seed));
+  }
+  const C = () => G.cases[S.i];
+
+  // ----------------------------------------------------------------
+  // שעון
+  // ----------------------------------------------------------------
+  let tId = null, tStart = 0;
+  function startClock(onTimeout){
+    stopClock();
+    tStart = Date.now();
+    elClock.classList.remove("hidden","low");
+    const tick = () => {
+      const left = M.questionSeconds - (Date.now() - tStart)/1000;
+      elClock.textContent = Math.max(0, Math.ceil(left));
+      elClock.classList.toggle("low", left <= 5);
+      if (left <= 0){ stopClock(); onTimeout(); }
+    };
+    tick();
+    tId = setInterval(tick, 200);
+  }
+  function stopClock(){ if(tId){ clearInterval(tId); tId=null; } elClock.classList.add("hidden"); }
+  function usedMs(){ return Date.now() - tStart; }
+
+  function addPts(n){ S.score += n; S.cur.pts += n; elPts.textContent = S.score; }
+
+  function chrome(show){
+    elTop.classList.toggle("hidden", !show);
+    elProgWrap.classList.toggle("hidden", !show);
+    if(!show) return;
+    elWhere.textContent = "תיק " + (S.i+1) + " מתוך " + G.cases.length;
+    elPts.textContent = S.score;
+    elProg.style.width = ((S.i + phaseFrac()) / G.cases.length * 100) + "%";
+    const names = {brief:"כתב התביעה", track:"הכרעה 1 · מסלול", evidence:"הכרעה 2 · ראיות",
+                   ruling:"הכרעה 3 · פסיקה", sanction:"הכרעה 3 · סנקציה", wrap:"סיכום התיק"};
+    elPhase.textContent = names[S.phase] || "";
+  }
+  function phaseFrac(){
+    const order = ["brief","track","evidence","ruling","sanction","wrap"];
+    const k = order.indexOf(S.phase);
+    return k < 0 ? 0 : k / order.length;
+  }
+
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+  // ----------------------------------------------------------------
+  // מסכים
+  // ----------------------------------------------------------------
+  function screenIntro(){
+    chrome(false); stopClock();
+    const saved = load();
+    const resume = saved && saved.phase !== "done" && (saved.i > 0 || saved.phase !== "brief");
+    wrap.innerHTML =
+      '<div class="hero">' +
+        '<h1>פסק דין</h1>' +
+        '<p>' + esc(M.course) + ' · ' + esc(M.lesson) + '</p>' +
+        '<div class="rules">' +
+          'עשרה תיקים מגיעים לשולחנך. <b>אתה השופט.</b><br><br>' +
+          'בכל תיק שלוש הכרעות:<br>' +
+          '<b>1. המסלול.</b> פלילי, משמעתי, אזרחי, או אין עילה. יש תיקים שנופלים בשניים במקביל, ואז צריך לסמן את שניהם. אין שעון כאן.<br>' +
+          '<b>2. הראיות.</b> ארבעה קלפים על השולחן, אתה פותח <b>שניים בלבד</b>. קלף רלוונטי מזכה ' + M.evidenceRight + ' נקודות, קלף שלא רלוונטי עולה ' + Math.abs(M.evidenceWrong) + '.<br>' +
+          '<b>3. הפסיקה.</b> ההכרעה לגופו של עניין, ואחריה הסנקציה. שתיהן על שעון של ' + M.questionSeconds + ' שניות, ומהירות מזכה בבונוס.' +
+        '</div>' +
+        (resume
+          ? '<button class="go" id="btnResume">להמשיך מתיק ' + (saved.i+1) + '</button>' +
+            '<button class="go ghost" id="btnNew">להתחיל מחדש</button>'
+          : '<button class="go" id="btnNew">פתיחת התיק הראשון</button>') +
+        '<p class="note">כל מספר וכל סעיף כאן מאומתים מול נוסח החוק והתקנות.</p>' +
+      '</div>';
+    const bn = document.getElementById("btnNew");
+    if(bn) bn.onclick = () => { clear(); S = fresh(); save(); render(); };
+    const br = document.getElementById("btnResume");
+    if(br) br.onclick = () => { S = saved; render(); };
+  }
+
+  function screenBrief(){
+    const c = C(); chrome(true); stopClock();
+    wrap.innerHTML =
+      '<div class="fileno">תיק ' + c.no + ' / ' + G.cases.length + '</div>' +
+      '<div class="ctitle">' + esc(c.title) + '</div>' +
+      (c.image ? '<div class="fig" id="fig"><img src="' + esc(c.image) + '" alt=""></div>' : '') +
+      '<div class="brief">' + esc(c.brief) + '</div>' +
+      '<button class="go" id="go">לפתוח את התיק</button>';
+    const fig = document.getElementById("fig");
+    if(fig){ const im = fig.querySelector("img"); im.onerror = () => fig.remove(); }
+    document.getElementById("go").onclick = () => { S.phase = "track"; save(); render(); };
+  }
+
+  function screenTrack(){
+    const c = C(); chrome(true); stopClock();
+    const order = E.shuffled(G.tracks, rndFor("tracks", c.id)).items;
+    wrap.innerHTML =
+      '<div class="fileno">תיק ' + c.no + ' · ' + esc(c.title) + '</div>' +
+      '<div class="qtext">לאן התיק הזה הולך?</div>' +
+      '<div class="sub">אפשר לסמן יותר ממסלול אחד. "אין עילה" מבטל את השאר.</div>' +
+      '<div class="tracks" id="tracks"></div>' +
+      '<button class="go" id="go" disabled>להגיש את ההכרעה</button>';
+    const box = document.getElementById("tracks"), go = document.getElementById("go");
+    order.forEach(t => {
+      const b = document.createElement("button");
+      b.className = "trk"; b.dataset.id = t.id;
+      b.innerHTML = '<span class="ic">' + t.icon + '</span><span class="tx">' +
+        '<span class="nm">' + esc(t.label) + '</span>' +
+        '<span class="hn">' + esc(t.hint) + '</span>' +
+        (t.body ? '<span class="bd">' + esc(t.body) + '</span>' : '') + '</span>';
+      b.onclick = () => {
+        const id = t.id;
+        if (t.exclusive) S.picked = S.picked.includes(id) ? [] : [id];
+        else {
+          S.picked = S.picked.filter(x => {
+            const tr = G.tracks.find(y => y.id === x);
+            return tr && !tr.exclusive;
+          });
+          S.picked = S.picked.includes(id) ? S.picked.filter(x => x !== id) : S.picked.concat(id);
+        }
+        box.querySelectorAll(".trk").forEach(el =>
+          el.classList.toggle("on", S.picked.includes(el.dataset.id)));
+        go.disabled = S.picked.length === 0;
+        save();
+      };
+      box.appendChild(b);
+    });
+    box.querySelectorAll(".trk").forEach(el => el.classList.toggle("on", S.picked.includes(el.dataset.id)));
+    go.disabled = S.picked.length === 0;
+    go.onclick = () => revealTrack(order);
+  }
+
+  function revealTrack(order){
+    const c = C();
+    const ok = E.tracksMatch(S.picked, c.tracks);
+    const pts = E.trackPoints(M, S.picked, c.tracks);
+    S.cur.trackOk = ok; addPts(pts);
+    const box = document.getElementById("tracks");
+    box.querySelectorAll(".trk").forEach(el => {
+      const id = el.dataset.id;
+      const isCorrect = c.tracks.includes(id), wasPicked = S.picked.includes(id);
+      el.classList.remove("on");
+      el.onclick = null;
+      if (isCorrect && wasPicked) el.classList.add("right");
+      else if (isCorrect && !wasPicked) el.classList.add("miss");
+      else if (!isCorrect && wasPicked) el.classList.add("wrong");
+      else el.classList.add("mute");
+    });
+    const go = document.getElementById("go");
+    go.replaceWith(Object.assign(document.createElement("div"), {innerHTML:
+      '<div class="verdict"><span style="color:' + (ok ? "var(--ok)" : "var(--bad)") + '">' +
+        (ok ? "הכרעת מסלול נכונה" : "לא מדויק") + '</span>' +
+        '<span class="d">' + (pts>0?"+":"") + pts + '</span></div>' +
+      '<div class="explain" style="margin-top:11px">' + esc(c.trackExplain) + '</div>' +
+      '<button class="go" id="go2" style="margin-top:12px">לראיות</button>'
+    }));
+    document.getElementById("go2").onclick = () => { S.phase = "evidence"; save(); render(); };
+    save();
+  }
+
+  function screenEvidence(){
+    const c = C(); chrome(true); stopClock();
+    const order = E.shuffled(c.evidence, rndFor("ev", c.id)).items;
+    wrap.innerHTML =
+      '<div class="fileno">תיק ' + c.no + ' · ' + esc(c.title) + '</div>' +
+      '<div class="qtext">אילו שתי ראיות אתה פותח?</div>' +
+      '<div class="sub" id="left"></div>' +
+      '<div class="cards" id="cards"></div>' +
+      '<div id="after"></div>';
+    const box = document.getElementById("cards");
+    order.forEach(ev => {
+      const b = document.createElement("button");
+      b.className = "card"; b.dataset.id = ev.id;
+      b.innerHTML = '<span class="ic">' + ev.icon + '</span><span class="lb">' + esc(ev.label) + '</span>';
+      b.onclick = () => openCard(ev, b);
+      box.appendChild(b);
+    });
+    S.opened.forEach(id => { const el = box.querySelector('[data-id="'+id+'"]');
+      const ev = c.evidence.find(e => e.id === id); if(el && ev) paintCard(ev, el); });
+    refreshLeft();
+  }
+
+  function refreshLeft(){
+    const n = M.evidencePicks - S.opened.length;
+    const el = document.getElementById("left");
+    if (!el) return;
+    el.textContent = n > 0 ? ("נותרו " + n + " מתוך " + M.evidencePicks) : "שתי הראיות נפתחו";
+    if (n <= 0) finishEvidence();
+  }
+
+  function paintCard(ev, el){
+    el.classList.add("open", ev.relevant ? "rel" : "irr");
+    el.innerHTML = '<span class="tag">' + (ev.relevant ? "רלוונטי" : "לא רלוונטי") + '</span>' +
+      '<span class="lb">' + ev.icon + " " + esc(ev.label) + '</span>' +
+      '<span class="tx">' + esc(ev.text) + '</span>';
+    el.onclick = null;
+  }
+
+  function openCard(ev, el){
+    if (S.opened.length >= M.evidencePicks || S.opened.includes(ev.id)) return;
+    S.opened.push(ev.id);
+    const pts = E.evidencePoints(M, ev);
+    addPts(pts);
+    if (ev.relevant) S.cur.relOpened++;
+    paintCard(ev, el);
+    save();
+    refreshLeft();
+  }
+
+  function finishEvidence(){
+    const c = C();
+    document.querySelectorAll("#cards .card:not(.open)").forEach(el => { el.classList.add("spent"); el.onclick = null; });
+    const after = document.getElementById("after");
+    if (!after || after.dataset.done) return;
+    after.dataset.done = "1";
+    after.innerHTML =
+      '<div class="explain" style="margin-top:12px">' + esc(c.evidenceNote) + '</div>' +
+      '<button class="go" id="go3" style="margin-top:12px">לפסוק</button>';
+    document.getElementById("go3").onclick = () => { S.phase = "ruling"; save(); render(); };
+  }
+
+  function screenQuestion(kind){
+    const c = C(); chrome(true);
+    const src = kind === "ruling" ? c.ruling : c.sanction;
+    const q = E.shuffleQuestion(src, rndFor(kind, c.id));
+    wrap.innerHTML =
+      '<div class="fileno">תיק ' + c.no + ' · ' + esc(c.title) + '</div>' +
+      '<div class="qtext">' + esc(q.q) + '</div>' +
+      '<div class="answers" id="answers"></div>' +
+      '<div id="after"></div>';
+    const box = document.getElementById("answers");
+    let answered = false;
+    q.options.forEach((opt, idx) => {
+      const b = document.createElement("button");
+      b.className = "ans";
+      b.innerHTML = '<span class="n">' + (idx+1) + '</span><span>' + esc(opt) + '</span>';
+      b.onclick = () => pick(idx);
+      box.appendChild(b);
+    });
+    startClock(() => pick(-1));
+
+    function pick(idx){
+      if (answered) return;
+      answered = true;
+      const ms = usedMs();
+      stopClock();
+      const ok = idx === q.correct;
+      const pts = idx < 0 ? 0 : E.timedPoints(M, ok, ms);
+      addPts(pts);
+      if (kind === "ruling") S.cur.rulingOk = ok; else S.cur.sanctionOk = ok;
+      box.querySelectorAll(".ans").forEach((el,i) => {
+        el.onclick = null;
+        if (i === q.correct) el.classList.add("right");
+        else if (i === idx) el.classList.add("wrong");
+        else el.classList.add("mute");
+      });
+      const head = idx < 0 ? "נגמר הזמן" : (ok ? "נכון" : "לא נכון");
+      document.getElementById("after").innerHTML =
+        '<div class="verdict" style="margin-top:12px"><span style="color:' +
+          (ok ? "var(--ok)" : "var(--bad)") + '">' + head + '</span>' +
+          '<span class="d">' + (pts>0?"+":"") + pts + (idx>=0 ? " · " + (ms/1000).toFixed(1) + " שנ'" : "") + '</span></div>' +
+        '<div class="explain" style="margin-top:11px">' + esc(q.explanation) + '</div>' +
+        '<button class="go" id="go4" style="margin-top:12px">' +
+          (kind === "ruling" ? "לסנקציה" : "לסיכום התיק") + '</button>';
+      document.getElementById("go4").onclick = () => {
+        S.phase = kind === "ruling" ? "sanction" : "wrap"; save(); render();
+      };
+      save();
+    }
+  }
+
+  function screenWrap(){
+    const c = C(); chrome(true); stopClock();
+    const cur = S.cur;
+    const rows = [
+      ["הכרעת המסלול", cur.trackOk ? "נכונה" : "שגויה", cur.trackOk],
+      ["ראיות רלוונטיות שנפתחו", cur.relOpened + " מתוך " + M.evidencePicks, cur.relOpened === M.evidencePicks],
+      ["הפסיקה", cur.rulingOk ? "נכונה" : "שגויה", cur.rulingOk],
+      ["הסנקציה", cur.sanctionOk ? "נכונה" : "שגויה", cur.sanctionOk],
+    ];
+    const last = S.i === G.cases.length - 1;
+    wrap.innerHTML =
+      '<div class="fileno">תיק ' + c.no + ' נסגר</div>' +
+      '<div class="ctitle">' + esc(c.title) + '</div>' +
+      '<div class="big">' + (cur.pts>0?"+":"") + cur.pts + '</div>' +
+      '<div class="rows">' + rows.map(r =>
+        '<div class="row ' + (r[2] ? "good" : "bad") + '"><span class="lbl">' + r[0] +
+        '</span><span class="v">' + r[1] + '</span></div>').join("") + '</div>' +
+      '<button class="go" id="go5">' + (last ? "לסיכום" : "לתיק הבא") + '</button>';
+    document.getElementById("go5").onclick = () => {
+      S.log.push(Object.assign({no:c.no}, cur));
+      S.cur = { pts:0, trackOk:null, relOpened:0, rulingOk:null, sanctionOk:null };
+      S.picked = []; S.opened = [];
+      if (last) S.phase = "done";
+      else { S.i++; S.phase = "brief"; }
+      save(); render();
+    };
+  }
+
+  function screenDone(){
+    chrome(false); stopClock();
+    const n = S.log.length;
+    const tracksOk = S.log.filter(x => x.trackOk).length;
+    const rel = S.log.reduce((s,x) => s + x.relOpened, 0);
+    const rulOk = S.log.filter(x => x.rulingOk).length;
+    const sanOk = S.log.filter(x => x.sanctionOk).length;
+    const weak = S.log.filter(x => !x.trackOk || !x.rulingOk || !x.sanctionOk).map(x => x.no);
+    wrap.innerHTML =
+      '<div class="hero">' +
+        '<h1>בית המשפט קם</h1>' +
+        '<div class="big">' + S.score + '</div>' +
+        '<div class="rows">' +
+          '<div class="row"><span class="lbl">הכרעות מסלול נכונות</span><span class="v">' + tracksOk + ' / ' + n + '</span></div>' +
+          '<div class="row"><span class="lbl">ראיות רלוונטיות שנפתחו</span><span class="v">' + rel + ' / ' + (n*M.evidencePicks) + '</span></div>' +
+          '<div class="row"><span class="lbl">פסיקות נכונות</span><span class="v">' + rulOk + ' / ' + n + '</span></div>' +
+          '<div class="row"><span class="lbl">סנקציות נכונות</span><span class="v">' + sanOk + ' / ' + n + '</span></div>' +
+        '</div>' +
+        (weak.length
+          ? '<p class="note">תיקים ששווה לחזור אליהם: ' + weak.join(", ") + '</p>'
+          : '<p class="note">עברת את כל עשרת התיקים בלי טעות אחת.</p>') +
+        '<button class="go" id="again">לשחק שוב</button>' +
+      '</div>';
+    document.getElementById("again").onclick = () => { clear(); S = fresh(); save(); render(); };
+  }
+
+  function render(){
+    switch (S.phase) {
+      case "brief":    return screenBrief();
+      case "track":    return screenTrack();
+      case "evidence": return screenEvidence();
+      case "ruling":   return screenQuestion("ruling");
+      case "sanction": return screenQuestion("sanction");
+      case "wrap":     return screenWrap();
+      case "done":     return screenDone();
+      default:         return screenIntro();
+    }
+  }
+
+  S = fresh();
+  screenIntro();
+  console.log("[solo] מוכן, " + G.cases.length + " תיקים");
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#12100c">
+<title>פסק דין - השלט</title>
+<style>
+  :root{
+    --bg:#12100c; --panel:#1d1a14; --panel2:#272219; --line:#3a3226;
+    --txt:#f2ece0; --dim:#a89b83; --accent:#c9a227; --accent2:#8c7853;
+    --ok:#3f9c5a; --bad:#c0453f;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{background:var(--bg);color:var(--txt);min-height:100vh;
+       font-family:"Segoe UI",Arial,sans-serif;display:flex;flex-direction:column}
+  .top{display:flex;align-items:center;gap:9px;padding:9px 13px;background:var(--panel);
+       border-bottom:1px solid var(--line);flex:none}
+  .top .me{font-size:15px;font-weight:700;display:flex;align-items:center;gap:7px}
+  .top .dot{width:13px;height:13px;border-radius:50%;flex:none}
+  .top .sp{flex:1}
+  .top .pts{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
+  .top .clock{font-size:19px;font-weight:700;min-width:32px;text-align:center;
+              font-variant-numeric:tabular-nums;color:var(--accent)}
+  .top .clock.low{color:var(--bad)}
+  .wrap{flex:1;display:flex;flex-direction:column;padding:15px;gap:13px;
+        max-width:560px;width:100%;margin:0 auto}
+  h2{font-size:21px;line-height:1.35}
+  .sub{font-size:14.5px;color:var(--dim);line-height:1.6}
+  .big{font-size:46px;font-weight:700;color:var(--accent);text-align:center;
+       font-variant-numeric:tabular-nums}
+  input{font-family:inherit;font-size:17px;padding:14px;border-radius:12px;
+        border:1px solid var(--line);background:var(--panel);color:var(--txt);width:100%}
+  button{font-family:inherit;cursor:pointer}
+  .go{font-size:17px;font-weight:700;padding:15px;border:none;border-radius:12px;
+      background:var(--accent);color:#1c1503;width:100%}
+  .go:disabled{opacity:.35}
+  .ghost{background:var(--panel2);color:var(--txt);border:1px solid var(--line)}
+  .colors{display:flex;gap:9px;flex-wrap:wrap;justify-content:center}
+  .colors button{width:41px;height:41px;border-radius:50%;border:3px solid transparent}
+  .colors button.on{border-color:var(--txt)}
+
+  .opts{display:flex;flex-direction:column;gap:10px}
+  .opt{display:flex;gap:11px;align-items:flex-start;text-align:start;width:100%;
+       background:var(--panel);border:2px solid var(--line);border-radius:12px;
+       padding:14px;font-size:16px;line-height:1.45;font-weight:600;color:var(--txt)}
+  .opt .n{flex:none;width:28px;height:28px;border-radius:7px;background:var(--panel2);
+          display:flex;align-items:center;justify-content:center;font-size:15px}
+  .opt.on{border-color:var(--accent);background:rgba(201,162,39,.14)}
+  .opt.sent{opacity:.5}
+  .opt:disabled{cursor:default}
+
+  .waiting{flex:1;display:flex;flex-direction:column;justify-content:center;
+           align-items:center;gap:15px;text-align:center}
+  .pulse{width:52px;height:52px;border-radius:50%;background:var(--accent);
+         animation:p 1.5s ease-in-out infinite}
+  @keyframes p{0%,100%{transform:scale(.75);opacity:.5}50%{transform:scale(1);opacity:1}}
+  .banner{border-radius:12px;padding:14px;font-size:17px;font-weight:700;text-align:center}
+  .banner.ok{background:rgba(63,156,90,.2);border:1px solid var(--ok);color:var(--ok)}
+  .banner.bad{background:rgba(192,69,63,.2);border:1px solid var(--bad);color:var(--bad)}
+  .hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="top hidden" id="top">
+  <span class="me"><span class="dot" id="dot"></span><span id="myname"></span></span>
+  <span class="sp"></span>
+  <span class="clock hidden" id="clock"></span>
+  <span class="pts" id="pts">0</span>
+</div>
+<div class="wrap" id="wrap"></div>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<script>
+"use strict";
+// ------------------------------------------------------------------
+// השלט לא טוען את js/gameData.js בכוונה. התשובות הנכונות יושבות
+// אך ורק במסך המרצה, והמסך הזה מקבל מ-Firebase רק את נוסח האפשרויות.
+// סטודנט שיפתח את קוד המקור של הדף הזה לא ימצא כאן שום תשובה.
+// ------------------------------------------------------------------
+const firebaseConfig = {
+  apiKey: "AIzaSyCXjGyaPhTv8RL7-aKp-tZRuuq5VyAtrKo",
+  databaseURL: "https://erez-psak-din-game-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "erez-psak-din-game",
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+const SLUG = "psak-din";            // ייחודי, כדי שמשחקים אחרים באותו דפדפן לא ידרסו
+const KEY_ID = SLUG + ":pid", KEY_NAME = SLUG + ":name";
+const COLORS = ["#c0453f","#c9a227","#3f7c9c","#3f9c5a","#9c5f3f","#7a5f9c","#c97a27","#4a8f8f"];
+
+const $ = (id) => document.getElementById(id);
+const wrap = $("wrap"), elTop = $("top"), elPts = $("pts"), elClock = $("clock");
+const esc = s => String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+let pid = null, myName = "", myColor = COLORS[0];
+let cur = { state: "lobby" };
+let me = null;
+let lastPromptKey = "";   // מזהה השאלה שכבר ציירנו, כדי לא לצייר מחדש בכל עדכון
+let sent = null;          // מה נשלח בשאלה הנוכחית
+let picks = [];           // בחירה מרובה (מסלולים / ראיות)
+
+/* ------------------------- הצטרפות ------------------------- */
+function screenJoin(){
+  elTop.classList.add("hidden");
+  wrap.innerHTML =
+    '<div class="waiting">' +
+      '<h2 style="color:var(--accent);font-size:31px">פסק דין</h2>' +
+      '<p class="sub">תחיקת הבנייה · שיעור 3<br>אתה יושב היום בכיסא של השופט.</p>' +
+      '<input id="nm" placeholder="השם שלך" maxlength="18" autocomplete="off">' +
+      '<div class="colors" id="cols"></div>' +
+      '<button class="go" id="join">להיכנס לאולם</button>' +
+      '<p class="sub" id="err" style="color:var(--bad)"></p>' +
+    '</div>';
+  const cols = $("cols");
+  COLORS.forEach((c,i)=>{
+    const b=document.createElement("button");
+    b.style.background=c; b.dataset.c=c;
+    if(i===0) b.classList.add("on");
+    b.onclick=()=>{ myColor=c; cols.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x.dataset.c===c)); };
+    cols.appendChild(b);
+  });
+  const saved = localStorage.getItem(KEY_NAME);
+  if(saved) $("nm").value = saved;
+  $("join").onclick = doJoin;
+  $("nm").addEventListener("keydown", e => { if(e.key==="Enter") doJoin(); });
+}
+
+function doJoin(){
+  const name = ($("nm").value||"").trim();
+  if(name.length < 2){ $("err").textContent = "צריך שם באורך שתי אותיות לפחות"; return; }
+  $("join").disabled = true;
+  const ref = db.ref("players").push();
+  ref.set({ name, color: myColor, score: 0, joinedAt: firebase.database.ServerValue.TIMESTAMP })
+    .then(()=>{
+      pid = ref.key; myName = name;
+      localStorage.setItem(KEY_ID, pid); localStorage.setItem(KEY_NAME, name);
+      watchMe(); render();
+    })
+    .catch(e=>{ $("err").textContent = "לא הצלחתי להתחבר: " + e.message; $("join").disabled = false; });
+}
+
+function watchMe(){
+  db.ref("players/" + pid).on("value", s => {
+    me = s.val();
+    if(!me){ // המרצה עשה איפוס עמוק - חוזרים למסך ההצטרפות
+      localStorage.removeItem(KEY_ID); pid = null; lastPromptKey = ""; screenJoin(); return;
+    }
+    myName = me.name; myColor = me.color;
+    $("myname").textContent = me.name;
+    $("dot").style.background = me.color;
+    elPts.textContent = me.score || 0;
+  });
+}
+
+/* ------------------------- שעון ------------------------- */
+let tId = null;
+function runClock(startedAt, seconds, onEnd){
+  stopClock();
+  elClock.classList.remove("hidden");
+  const tick = () => {
+    const left = seconds - (Date.now() - startedAt)/1000;
+    elClock.textContent = Math.max(0, Math.ceil(left));
+    elClock.classList.toggle("low", left <= 5);
+    if(left <= 0){ stopClock(); if(onEnd) onEnd(); }
+  };
+  tick(); tId = setInterval(tick, 200);
+}
+function stopClock(){ if(tId){clearInterval(tId); tId=null;} elClock.classList.add("hidden"); }
+
+/* ------------------------- שליחת תשובה ------------------------- */
+function send(payload){
+  const p = cur.prompt;
+  if(!p || sent !== null) return;
+  sent = payload;
+  db.ref("answers/" + p.key + "/" + pid).set(
+    Object.assign({ at: firebase.database.ServerValue.TIMESTAMP,
+                    ms: Date.now() - (p.startedAt || Date.now()) }, payload));
+}
+
+/* ------------------------- מסכים ------------------------- */
+function waiting(title, sub){
+  elTop.classList.remove("hidden");
+  wrap.innerHTML = '<div class="waiting"><div class="pulse"></div>' +
+    '<h2>' + esc(title) + '</h2>' + (sub ? '<p class="sub">' + esc(sub) + '</p>' : '') + '</div>';
+}
+
+// שאלה עם תשובה יחידה (פסיקה / סנקציה)
+function screenSingle(p){
+  elTop.classList.remove("hidden");
+  wrap.innerHTML =
+    '<p class="sub">' + esc(p.crumb || "") + '</p>' +
+    '<h2>' + esc(p.q) + '</h2>' +
+    '<div class="opts" id="opts"></div>' +
+    '<div id="after"></div>';
+  const box = $("opts");
+  (p.options||[]).forEach((o,i)=>{
+    const b=document.createElement("button");
+    b.className="opt";
+    b.innerHTML='<span class="n">'+(i+1)+'</span><span>'+esc(o)+'</span>';
+    b.onclick=()=>{
+      if(sent!==null) return;
+      send({ pick: i });
+      box.querySelectorAll(".opt").forEach((el,j)=>{ el.disabled=true; el.classList.add(j===i?"on":"sent"); });
+      $("after").innerHTML='<p class="sub" style="margin-top:12px">נשלח. ממתינים לשאר האולם.</p>';
+      stopClock();
+    };
+    box.appendChild(b);
+  });
+  if(p.startedAt && p.seconds) runClock(p.startedAt, p.seconds, ()=>{
+    if(sent===null){
+      box.querySelectorAll(".opt").forEach(el=>el.disabled=true);
+      $("after").innerHTML='<p class="sub" style="margin-top:12px">נגמר הזמן.</p>';
+    }
+  });
+}
+
+// בחירה מרובה עם מספר קבוע (מסלולים / ראיות)
+function screenMulti(p){
+  elTop.classList.remove("hidden");
+  picks = [];
+  wrap.innerHTML =
+    '<p class="sub">' + esc(p.crumb || "") + '</p>' +
+    '<h2>' + esc(p.q) + '</h2>' +
+    '<p class="sub" id="cnt"></p>' +
+    '<div class="opts" id="opts"></div>' +
+    '<button class="go" id="submit" disabled>לשלוח</button>' +
+    '<div id="after"></div>';
+  const box = $("opts"), cnt = $("cnt"), sub = $("submit");
+  const exact = p.exact || 0;   // אם 0, כל מספר גדול מאפס מתקבל
+  function refresh(){
+    box.querySelectorAll(".opt").forEach((el,i)=>el.classList.toggle("on", picks.includes(i)));
+    cnt.textContent = exact ? ("נבחרו " + picks.length + " מתוך " + exact)
+                            : ("נבחרו " + picks.length + ", אפשר יותר מאחד");
+    sub.disabled = exact ? picks.length !== exact : picks.length === 0;
+  }
+  (p.options||[]).forEach((o,i)=>{
+    const b=document.createElement("button");
+    b.className="opt";
+    b.innerHTML='<span class="n">'+(i+1)+'</span><span>'+esc(o)+'</span>';
+    b.onclick=()=>{
+      if(sent!==null) return;
+      if(picks.includes(i)) picks = picks.filter(x=>x!==i);
+      else { if(exact && picks.length >= exact) return; picks = picks.concat(i); }
+      refresh();
+    };
+    box.appendChild(b);
+  });
+  refresh();
+  sub.onclick=()=>{
+    if(sent!==null) return;
+    send({ picks: picks.slice() });
+    box.querySelectorAll(".opt").forEach(el=>el.disabled=true);
+    sub.classList.add("hidden");
+    $("after").innerHTML='<p class="sub" style="margin-top:12px">נשלח. ממתינים לשאר האולם.</p>';
+    stopClock();
+  };
+  if(p.startedAt && p.seconds) runClock(p.startedAt, p.seconds, ()=>{
+    if(sent===null){ box.querySelectorAll(".opt").forEach(el=>el.disabled=true); sub.disabled=true;
+      $("after").innerHTML='<p class="sub" style="margin-top:12px">נגמר הזמן.</p>'; }
+  });
+}
+
+function screenReveal(){
+  elTop.classList.remove("hidden"); stopClock();
+  const r = (cur.reveal && pid && cur.reveal[pid]) || null;
+  wrap.innerHTML =
+    '<div class="waiting">' +
+      (r ? '<div class="banner ' + (r.ok ? "ok" : "bad") + '">' + (r.ok ? "צדקת" : "לא הפעם") + '</div>' +
+           '<div class="big">' + (r.pts > 0 ? "+" : "") + (r.pts || 0) + '</div>'
+         : '<p class="sub">לא נרשמה תשובה שלך בשלב הזה.</p>') +
+      '<p class="sub">ההסבר על המסך הגדול.</p>' +
+    '</div>';
+}
+
+function render(){
+  const st = cur.state || "lobby";
+  if(!pid){ screenJoin(); return; }
+  if(st === "lobby"){ lastPromptKey=""; waiting("נכנסת לאולם", "ממתינים שהמרצה יפתח את התיק הראשון."); return; }
+  if(st === "brief"){ lastPromptKey=""; waiting("כתב התביעה על המסך", "קרא את התיק. ההכרעה הראשונה תיפתח כאן."); return; }
+  if(st === "reveal"){ screenReveal(); return; }
+  if(st === "scores"){ waiting("לוח התוצאות על המסך", ""); return; }
+  if(st === "finished"){
+    elTop.classList.remove("hidden");
+    wrap.innerHTML = '<div class="waiting"><h2 style="color:var(--accent)">בית המשפט קם</h2>' +
+      '<div class="big">' + ((me && me.score) || 0) + '</div>' +
+      '<p class="sub">התארים על המסך הגדול.</p></div>';
+    return;
+  }
+  if(st === "question"){
+    const p = cur.prompt;
+    if(!p) { waiting("רגע", ""); return; }
+    if(p.key === lastPromptKey) return;   // כבר מצויר, לא לצייר מחדש ולאבד בחירה
+    lastPromptKey = p.key; sent = null;
+    if(p.multi) screenMulti(p); else screenSingle(p);
+    return;
+  }
+  waiting("רגע", "");
+}
+
+/* ------------------------- חיבור ------------------------- */
+db.ref("game").on("value", s => { cur = s.val() || { state: "lobby" }; render(); });
+
+const savedId = localStorage.getItem(KEY_ID);
+if(savedId){
+  db.ref("players/" + savedId).once("value").then(s=>{
+    if(s.exists()){ pid = savedId; watchMe(); render(); }
+    else { localStorage.removeItem(KEY_ID); screenJoin(); }
+  }).catch(()=>screenJoin());
+} else screenJoin();
+
+console.log("[play] השלט מוכן");
+</script>
+</body>
+</html>
